@@ -173,11 +173,13 @@ read_h5ad <- function(
 #' 
 #' @param object Seurat object
 #' @param file Path to h5ad object (e.g. "~/Downloads/pbmc3k.h5ad")
+#' @param slot Name of the Seurat objects slot to pull data from, Default = "counts".
 #' @export
 #' 
 write_h5ad <- function(
   object = NULL, 
-  file   = NULL
+  file = NULL, 
+  slot = "counts"
   ) {
   
   if (class(object) != "Seurat") stop("Please supply object.h5ad") 
@@ -191,25 +193,25 @@ write_h5ad <- function(
   
   # Add count matrix
   rhdf5::h5write(
-    obj = Matrix::as.matrix(ds@assays$RNA@data), file = file, name = "X"
+    obj = Matrix::as.matrix(object@assays$RNA[slot]), file = file, name = "X"
   )
   
   # Add coldata (obs)
-  df <- ds@meta.data
+  df <- object@meta.data
   df <- cbind(data.frame("gene_name" = rownames(df)), df)
   rhdf5::h5write(obj = df, file = file, name = "obs")
   
   # Add meta features (var)
-  df <- ds@assays$RNA@meta.features
+  df <- object@assays$RNA@meta.features
   df <- cbind(data.frame("gene_name" = rownames(df)), df)
   rhdf5::h5write(obj = df, file = file, name = "var")
   
   # Add dimensional reductions (obsm)
   rhdf5::h5createGroup(file, "obsm")
-  for (i in names(ds@reductions)) {
+  for (i in names(object@reductions)) {
     j <- paste0("obsm/", i)
     rhdf5::h5write(
-      obj = t(ds@reductions[[i]]@cell.embeddings), file = file, name = j
+      obj = t(object@reductions[[i]]@cell.embeddings), file = file, name = j
     )
   }
   print("Done.")
