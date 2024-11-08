@@ -189,21 +189,31 @@ write_h5ad <- function(
   if (file.exists(file)) stop("File already exists.")
   rhdf5::h5createFile(file)
   
+  print( paste0("Using Seurat V",substr(object@version, start=1, stop=1)) )
   print("Begin conversion")
   
   # Add count matrix
-  rhdf5::h5write(
-    obj = Matrix::as.matrix(object@assays$RNA[slot]), file = file, name = "X"
-  )
+  if(as.numeric(substr(object@version, start=1, stop=1)) < 5){
+    rhdf5::h5write(obj = Matrix::as.matrix(object@assays$RNA[slot]), file = file, name = "X")
+  }
+  else{
+    rhdf5::h5write(obj = Matrix::as.matrix(LayerData(object, assay = "RNA", layer = slot)), file = file, name = "X")
+  }
   
   # Add coldata (obs)
   df <- object@meta.data
-  df <- cbind(data.frame("gene_name" = rownames(df)), df)
+  df <- cbind(data.frame("barcode" = rownames(df)), df)
   rhdf5::h5write(obj = df, file = file, name = "obs")
   
   # Add meta features (var)
-  df <- object@assays$RNA@meta.features
-  df <- cbind(data.frame("gene_name" = rownames(df)), df)
+  if(as.numeric(substr(object@version, start=1, stop=1)) < 5){
+    df <- object@assays$RNA@meta.features
+    df <- cbind(data.frame("gene_name" = rownames(df)), df)
+  }
+  else{
+    df <- object@assays$RNA@meta.data
+    df <- cbind(data.frame("gene_name" = rownames(object[["RNA"]])), df)
+  }
   rhdf5::h5write(obj = df, file = file, name = "var")
   
   # Add dimensional reductions (obsm)
